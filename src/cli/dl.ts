@@ -19,4 +19,11 @@ if (!args.s) {
     process.exit(1);
 }
 
-download(args.s, args.o);
+(async () => {
+    try {
+        await download(args.s, args.o);
+    } catch (e) {
+        console.error(`无法完成下载：${e}`);
+        process.exit(1);
+    }
+})();
