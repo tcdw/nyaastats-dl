@@ -7,10 +7,11 @@ export const vehicle: {[key: string]: string} = {
     strider_one_cm: '骑炽足兽移动距离',
     climb_one_cm: '已攀爬距离',
     crouch_one_cm: '潜行距离',
-    // fly_one_cm: '飞行距离',
+    fly_one_cm: '飞行距离',
     sprint_one_cm: '疾跑距离',
     swim_one_cm: '游泳距离',
     walk_one_cm: '行走距离',
+    fall_one_cm: '掉落距离',
 };
 
 export const advancements = [

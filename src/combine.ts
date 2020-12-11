@@ -1,3 +1,4 @@
+/* eslint-disable camelcase */
 import fs from 'fs-extra';
 import path from 'path';
 import quickSort from './utils/quick-sort';
@@ -5,8 +6,26 @@ import { vehicle, advancements } from './data/key';
 
 interface PlayerData {
     name: string;
-    timeLived: string;
+    timeLived: number;
+    timeLivedPerDay: number;
+
+    // 交通方式
+    boat: number;
+    aviate: number;
+    horse: number;
+    minecart: number;
+    pig: number;
+    strider: number;
+    climb: number;
+    crouch: number;
+    fly: number;
+    sprint: number;
+    swim: number;
+    walk: number;
+    fall: number;
 }
+
+const vehicleList = Object.keys(vehicle);
 
 function toCamelCase(str: string, first = false) {
     const words = str.split('_');
@@ -98,7 +117,21 @@ function combine(src: string, year: number = new Date().getFullYear()) {
         });
 
         // 出行方式总里程
-        const vehicleList = Object.keys(vehicle);
+        const vehicleData: {[key: string]: number} = {
+            boat: 0,
+            aviate: 0,
+            horse: 0,
+            minecart: 0,
+            pig: 0,
+            strider: 0,
+            climb: 0,
+            crouch: 0,
+            fly: 0,
+            sprint: 0,
+            swim: 0,
+            walk: 0,
+            fall: 0,
+        };
         vehicleList.forEach((f) => {
             const vehicleKey = `stats:${vehicle[f]}`;
             const value: number | undefined = content.stats[`${statsPrefix}${f}`];
@@ -106,9 +139,11 @@ function combine(src: string, year: number = new Date().getFullYear()) {
             if (typeof value !== 'undefined') {
                 // 读取 1.13+ 键值
                 count(data, vehicleKey, Math.floor(fixOverflow(value) / 100));
+                vehicleData[f.slice(0, -7)] = fixOverflow(value);
             } else if (typeof valueLegacy !== 'undefined') {
                 // 读取 1.12 键值
                 count(data, vehicleKey, Math.floor(fixOverflow(valueLegacy) / 100));
+                vehicleData[f.slice(0, -7)] = fixOverflow(valueLegacy);
             }
         });
 
@@ -116,6 +151,22 @@ function combine(src: string, year: number = new Date().getFullYear()) {
         playerDatas.push({
             name: content.data.playername,
             timeLived: content.data.time_lived,
+            timeLivedPerDay: content.data.time_lived
+                / ((new Date(`${year + 1}-01-01`).getTime() - content.data.time_start) / 1000 / 86400),
+
+            boat: vehicleData.boat,
+            aviate: vehicleData.aviate,
+            horse: vehicleData.horse,
+            minecart: vehicleData.minecart,
+            pig: vehicleData.pig,
+            strider: vehicleData.strider,
+            climb: vehicleData.climb,
+            crouch: vehicleData.crouch,
+            fly: vehicleData.fly,
+            sprint: vehicleData.sprint,
+            swim: vehicleData.swim,
+            walk: vehicleData.walk,
+            fall: vehicleData.fall,
         });
     });
     process.stderr.write('\n');
@@ -129,13 +180,16 @@ function combine(src: string, year: number = new Date().getFullYear()) {
     fs.writeFileSync(path.join(src, 'results.txt'), output, { encoding: 'utf8' });
     fs.mkdirpSync(path.join(src, 'top'));
 
-    // 排序：在线时间最长
-    quickSort(playerDatas, 'timeLived', true);
-    fs.writeFileSync(path.join(src, 'top', 'time_lived.txt'), toSingleTable(playerDatas, 'timeLived'), { encoding: 'utf8' });
-
-    // 排序：在线时间最长
-    quickSort(playerDatas, 'timeLived', true);
-    fs.writeFileSync(path.join(src, 'top', 'time_lived.txt'), toSingleTable(playerDatas, 'timeLived'), { encoding: 'utf8' });
+    const keyList = Object.keys(playerDatas[0]);
+    // 排序
+    keyList.forEach((e) => {
+        const keyName: any = e;
+        if (e === 'name') {
+            return;
+        }
+        quickSort(playerDatas, keyName, true);
+        fs.writeFileSync(path.join(src, 'top', `${keyName}.txt`), toSingleTable(playerDatas, keyName), { encoding: 'utf8' });
+    });
 }
 
 export default combine;
