@@ -16,6 +16,10 @@ function filter(e: number | undefined | null) {
     return e;
 }
 
+function count(map: Map<string, number>, key: string) {
+    return map.set(key, filter(map.get(key)) + 1);
+}
+
 function combine(src: string, year: number = 2020) {
     const advancementData = fs.readJSONSync(path.resolve(__dirname, '../data/advancement-data.json'), { encoding: 'utf8' });
     const advancements = Object.keys(advancementData);
@@ -31,13 +35,13 @@ function combine(src: string, year: number = 2020) {
         // 每年份加入的玩家数量
         // yearly_registered_$YEAR $VALUE
         const yearKey = `yearly_registered_${timeStart.getFullYear()}`;
-        data.set(yearKey, filter(data.get(yearKey)) + 1);
+        count(data, yearKey);
 
         // 该年份每月加入的玩家数量
         // yearly_registered_$YEAR_$MONTH  $VALUE
         if (timeStart.getFullYear() === year) {
             const addedKey = `monthly_registered_${year}_${pad(timeStart.getMonth() + 1, 2)}`;
-            data.set(addedKey, filter(data.get(addedKey)) + 1);
+            count(data, addedKey);
         }
 
         // 该年份每月增加的熊孩子数量
@@ -45,17 +49,16 @@ function combine(src: string, year: number = 2020) {
         if (timeLast.getFullYear() === year) {
             const bannedKey = `monthly_banned_${year}_${pad(timeLast.getMonth() + 1, 2)}`;
             if (content.data.banned) {
-                data.set(bannedKey, filter(data.get(bannedKey)) + 1);
+                count(data, bannedKey);
             }
         }
 
-        // 进度完成率 advancement
+        // 进度 (advancement) 完成人数
         // advancement_$NAME  $AMOUNT
-        // content.advancements
         advancements.forEach((e) => {
             if (typeof content.advancements[e] !== 'undefined' && content.advancements[e].done) {
                 const advKey = `advancements_${e}`;
-                data.set(advKey, filter(data.get(advKey)) + 1);
+                count(data, advKey);
             }
         });
     });
