@@ -1,6 +1,12 @@
 import fs from 'fs-extra';
 import path from 'path';
-import { KeyValue, quickSort } from './utils/quick-sort';
+import quickSort from './utils/quick-sort';
+import { vehicle, advancements } from './data/key';
+
+interface PlayerData {
+    name: string;
+    timeLived: string;
+}
 
 function toCamelCase(str: string, first = false) {
     const words = str.split('_');
@@ -40,107 +46,20 @@ function count(map: Map<string, number>, key: string, amount = 1) {
     return map.set(key, filter(map.get(key)) + amount);
 }
 
+function toSingleTable(playerDatas: PlayerData[], key: keyof PlayerData) {
+    let out = '';
+    playerDatas.forEach((e) => {
+        out += `${e.name}\t${e[key]}\n`;
+    });
+    return out;
+}
+
 function combine(src: string, year: number = new Date().getFullYear()) {
-    const vehicle: {[key: string]: string} = {
-        boat_one_cm: '坐船移动距离',
-        aviate_one_cm: '鞘翅滑行距离',
-        horse_one_cm: '骑马移动距离',
-        minecart_one_cm: '坐矿车移动距离',
-        pig_one_cm: '骑猪移动距离',
-        strider_one_cm: '骑炽足兽移动距离',
-        climb_one_cm: '已攀爬距离',
-        crouch_one_cm: '潜行距离',
-        // fly_one_cm: '飞行距离',
-        sprint_one_cm: '疾跑距离',
-        swim_one_cm: '游泳距离',
-        walk_one_cm: '行走距离',
-    };
-    const advancements = [
-        'adventure/adventuring_time',
-        'adventure/arbalistic',
-        'adventure/bullseye',
-        'adventure/hero_of_the_village',
-        'adventure/honey_block_slide',
-        'adventure/kill_a_mob',
-        'adventure/kill_all_mobs',
-        'adventure/ol_betsy',
-        'adventure/root',
-        'adventure/shoot_arrow',
-        'adventure/sleep_in_bed',
-        'adventure/sniper_duel',
-        'adventure/summon_iron_golem',
-        'adventure/throw_trident',
-        'adventure/totem_of_undying',
-        'adventure/trade',
-        'adventure/two_birds_one_arrow',
-        'adventure/very_very_frightening',
-        'adventure/voluntary_exile',
-        'adventure/whos_the_pillager_now',
-        'end/dragon_breath',
-        'end/dragon_egg',
-        'end/elytra',
-        'end/enter_end_gateway',
-        'end/find_end_city',
-        'end/kill_dragon',
-        'end/levitate',
-        'end/respawn_dragon',
-        'end/root',
-        'husbandry/balanced_diet',
-        'husbandry/bred_all_animals',
-        'husbandry/breed_an_animal',
-        'husbandry/complete_catalogue',
-        'husbandry/fishy_business',
-        'husbandry/obtain_netherite_hoe',
-        'husbandry/plant_seed',
-        'husbandry/root',
-        'husbandry/safely_harvest_honey',
-        'husbandry/silk_touch_nest',
-        'husbandry/tactical_fishing',
-        'husbandry/tame_an_animal',
-        'nether/all_effects',
-        'nether/all_potions',
-        'nether/brew_potion',
-        'nether/charge_respawn_anchor',
-        'nether/create_beacon',
-        'nether/create_full_beacon',
-        'nether/distract_piglin',
-        'nether/explore_nether',
-        'nether/fast_travel',
-        'nether/find_bastion',
-        'nether/find_fortress',
-        'nether/get_wither_skull',
-        'nether/loot_bastion',
-        'nether/netherite_armor',
-        'nether/obtain_ancient_debris',
-        'nether/obtain_blaze_rod',
-        'nether/obtain_crying_obsidian',
-        'nether/return_to_sender',
-        'nether/ride_strider',
-        'nether/root',
-        'nether/summon_wither',
-        'nether/uneasy_alliance',
-        'nether/use_lodestone',
-        'story/cure_zombie_villager',
-        'story/deflect_arrow',
-        'story/enchant_item',
-        'story/enter_the_end',
-        'story/enter_the_nether',
-        'story/follow_ender_eye',
-        'story/form_obsidian',
-        'story/iron_tools',
-        'story/lava_bucket',
-        'story/mine_diamond',
-        'story/mine_stone',
-        'story/obtain_armor',
-        'story/root',
-        'story/shiny_gear',
-        'story/smelt_iron',
-        'story/upgrade_tools',
-    ];
     const dataPaths = fs.readdirSync(path.join(src, 'data/by-uuid'));
     const statsPrefix = 'minecraft:custom/minecraft:';
     const statsPrefixLegacy = 'stat.';
     const data: Map<string, number> = new Map();
+    const playerDatas: PlayerData[] = [];
     dataPaths.forEach((e, i) => {
         process.stderr.write('\r');
         process.stderr.write(`[${i + 1} / ${dataPaths.length}] 正在处理 ...`);
@@ -162,6 +81,7 @@ function combine(src: string, year: number = new Date().getFullYear()) {
         }
 
         // 该年份所有上线玩家加入年份统计
+        // timelast_$YEAR_registered:$JOIN_YEAR  $VALUE
         if (timeLast.getFullYear() === year) {
             const toyearKey = `timelast_${year}_registered:${timeStart.getFullYear()}`;
             count(data, toyearKey);
@@ -191,16 +111,31 @@ function combine(src: string, year: number = new Date().getFullYear()) {
                 count(data, vehicleKey, Math.floor(fixOverflow(valueLegacy) / 100));
             }
         });
-    });
-    let output = '';
 
+        // 录入玩家单项数据
+        playerDatas.push({
+            name: content.data.playername,
+            timeLived: content.data.time_lived,
+        });
+    });
+    process.stderr.write('\n');
+
+    let output = '';
     // 通用数据
     const dataAsc: Map<string, number> = new Map([...data.entries()].sort());
     dataAsc.forEach((v, k) => {
         output += `${k}\t${v}\n`;
     });
-
     fs.writeFileSync(path.join(src, 'results.txt'), output, { encoding: 'utf8' });
+    fs.mkdirpSync(path.join(src, 'top'));
+
+    // 排序：在线时间最长
+    quickSort(playerDatas, 'timeLived', true);
+    fs.writeFileSync(path.join(src, 'top', 'time_lived.txt'), toSingleTable(playerDatas, 'timeLived'), { encoding: 'utf8' });
+
+    // 排序：在线时间最长
+    quickSort(playerDatas, 'timeLived', true);
+    fs.writeFileSync(path.join(src, 'top', 'time_lived.txt'), toSingleTable(playerDatas, 'timeLived'), { encoding: 'utf8' });
 }
 
 export default combine;
