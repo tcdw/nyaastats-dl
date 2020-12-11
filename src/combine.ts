@@ -1,5 +1,6 @@
 import fs from 'fs-extra';
 import path from 'path';
+import { KeyValue, quickSort } from './utils/quick-sort';
 
 function toCamelCase(str: string, first = false) {
     const words = str.split('_');
@@ -29,25 +30,31 @@ function filter(e: number | undefined | null) {
     return e;
 }
 
+// https://github.com/NyaaCat/NyaaStats/blob/v2/web/src/components/player-statistic-panel.vue#L143-L151
+function fixOverflow(val: number) {
+    const INT_32_MAX = 2 ** 31;
+    return val >= 0 ? val : val + INT_32_MAX * 2;
+}
+
 function count(map: Map<string, number>, key: string, amount = 1) {
     return map.set(key, filter(map.get(key)) + amount);
 }
 
-function combine(src: string, year: number = 2020) {
-    const vehicle = [
-        'boat_one_cm', // 坐船移动距离
-        'aviate_one_cm', // 鞘翅滑行距离
-        'horse_one_cm', // 骑马移动距离
-        'minecart_one_cm', // 坐矿车移动距离
-        'pig_one_cm', // 骑猪移动距离
-        'strider_one_cm', // 骑炽足兽移动距离
-        'climb_one_cm', // 已攀爬距离
-        'crouch_one_cm', // 潜行距离
-        'fly_one_cm', // 飞行距离
-        'sprint_one_cm', // 疾跑距离
-        'swim_one_cm', // 游泳距离
-        'walk_one_cm', // 行走距离
-    ];
+function combine(src: string, year: number = new Date().getFullYear()) {
+    const vehicle: {[key: string]: string} = {
+        boat_one_cm: '坐船移动距离',
+        aviate_one_cm: '鞘翅滑行距离',
+        horse_one_cm: '骑马移动距离',
+        minecart_one_cm: '坐矿车移动距离',
+        pig_one_cm: '骑猪移动距离',
+        strider_one_cm: '骑炽足兽移动距离',
+        climb_one_cm: '已攀爬距离',
+        crouch_one_cm: '潜行距离',
+        // fly_one_cm: '飞行距离',
+        sprint_one_cm: '疾跑距离',
+        swim_one_cm: '游泳距离',
+        walk_one_cm: '行走距离',
+    };
     const advancements = [
         'adventure/adventuring_time',
         'adventure/arbalistic',
@@ -146,12 +153,18 @@ function combine(src: string, year: number = 2020) {
         const yearKey = `yearly_registered:${timeStart.getFullYear()}`;
         count(data, yearKey);
 
-        // 今年范围内的所有数据统计
+        // 该年份范围内的所有数据统计
         if (timeStart.getFullYear() === year) {
             // 该年份每月加入的玩家数量
             // yearly_registered:$YEAR_$MONTH  $VALUE
             const addedKey = `monthly_registered:${year}_${pad(timeStart.getMonth() + 1, 2)}`;
             count(data, addedKey);
+        }
+
+        // 该年份所有上线玩家加入年份统计
+        if (timeLast.getFullYear() === year) {
+            const toyearKey = `timelast_${year}_registered:${timeStart.getFullYear()}`;
+            count(data, toyearKey);
         }
 
         // 进度 (advancement) 完成人数
@@ -165,14 +178,17 @@ function combine(src: string, year: number = 2020) {
         });
 
         // 出行方式总里程
-        vehicle.forEach((f) => {
-            const vehicleKey = `stats:${f}`;
+        const vehicleList = Object.keys(vehicle);
+        vehicleList.forEach((f) => {
+            const vehicleKey = `stats:${vehicle[f]}`;
             const value: number | undefined = content.stats[`${statsPrefix}${f}`];
             const valueLegacy: number | undefined = content.stats[`${statsPrefixLegacy}${toCamelCase(f)}`];
             if (typeof value !== 'undefined') {
-                count(data, vehicleKey, Math.floor(value / 100));
+                // 读取 1.13+ 键值
+                count(data, vehicleKey, Math.floor(fixOverflow(value) / 100));
             } else if (typeof valueLegacy !== 'undefined') {
-                count(data, vehicleKey, Math.floor(valueLegacy / 100));
+                // 读取 1.12 键值
+                count(data, vehicleKey, Math.floor(fixOverflow(valueLegacy) / 100));
             }
         });
     });
