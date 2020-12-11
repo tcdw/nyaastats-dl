@@ -5,6 +5,7 @@ const helpContent = `Usage: nyaastats-combine [OPTIONS]
 Options:
 -h              Display this help information and exit
 -i dir          Input directory
+-y year[=2020]  Year
 `;
 
 const args = minimist(process.argv.slice(2));
