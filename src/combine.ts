@@ -1,7 +1,6 @@
 /* eslint-disable camelcase */
 import fs from 'fs-extra';
 import path from 'path';
-import quickSort from './utils/quick-sort';
 import { vehicle, advancements } from './data/key';
 
 interface PlayerData {
@@ -187,9 +186,8 @@ function combine(src: string, year: number = new Date().getFullYear()) {
         if (e === 'name') {
             return;
         }
-        process.stderr.write(`正在排序 ${keyName} ...\n`);
-        quickSort(playerDatas, keyName, true);
-        fs.writeFileSync(path.join(src, 'top', `${keyName}.txt`), toSingleTable(playerDatas, keyName), { encoding: 'utf8' });
+        const results = playerDatas.sort((a: any, b: any) => b[keyName] - a[keyName]);
+        fs.writeFileSync(path.join(src, 'top', `${keyName}.txt`), toSingleTable(results, keyName), { encoding: 'utf8' });
     });
 }
 
