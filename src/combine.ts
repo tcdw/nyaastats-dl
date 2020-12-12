@@ -187,6 +187,7 @@ function combine(src: string, year: number = new Date().getFullYear()) {
         if (e === 'name') {
             return;
         }
+        process.stderr.write(`正在排序 ${keyName} ...\n`);
         quickSort(playerDatas, keyName, true);
         fs.writeFileSync(path.join(src, 'top', `${keyName}.txt`), toSingleTable(playerDatas, keyName), { encoding: 'utf8' });
     });
